@@ -163,3 +163,132 @@ JOIN country AS c2 ON c1.country_id = c2.id;
 3. ระวังการใช้ SELECT * ในระบบจริง
 4. ใช้ BETWEEN แทนการเขียนเงื่อนไขซ้ำซ้อน
 5. ทดสอบ query กับข้อมูลหลากหลายกรณี 
+
+## การรวมกลุ่มและฟังก์ชันการคำนวณ (Aggregation and Functions)
+
+### ฟังก์ชันการรวมกลุ่ม (Aggregate Functions)
+- `avg(expr)` - ค่าเฉลี่ยของข้อมูลในกลุ่ม
+- `count(expr)` - นับจำนวนแถวในกลุ่ม
+- `max(expr)` - ค่าสูงสุดในกลุ่ม
+- `min(expr)` - ค่าต่ำสุดในกลุ่ม
+- `sum(expr)` - ผลรวมของข้อมูลในกลุ่ม
+
+### ตัวอย่างการใช้งาน
+```sql
+-- นับจำนวนเมืองทั้งหมด
+SELECT COUNT(*) FROM city;
+
+-- นับจำนวนเมืองที่มีค่า rating ไม่เป็น NULL
+SELECT COUNT(rating) FROM city;
+
+-- นับจำนวนประเทศที่แตกต่างกัน
+SELECT COUNT(DISTINCT country_id) FROM city;
+
+-- หาประชากรน้อยที่สุดและมากที่สุดของประเทศ
+SELECT MIN(population), MAX(population)
+FROM country;
+
+-- หาผลรวมประชากรแยกตามประเทศ
+SELECT country_id, SUM(population)
+FROM city
+GROUP BY country_id;
+
+-- หาค่าเฉลี่ย rating ของเมืองในแต่ละประเทศที่มีค่าเฉลี่ยมากกว่า 3.0
+SELECT country_id, AVG(rating)
+FROM city
+GROUP BY country_id
+HAVING AVG(rating) > 3.0;
+```
+
+## Subqueries (การสืบค้นย่อย)
+
+### Single Value Subquery
+```sql
+-- หาเมืองที่มี rating เท่ากับ Paris
+SELECT name FROM city
+WHERE rating = (
+    SELECT rating
+    FROM city
+    WHERE name = 'Paris'
+);
+```
+
+### Multiple Values Subquery
+```sql
+-- หาเมืองในประเทศที่มีประชากรมากกว่า 20 ล้านคน
+SELECT name
+FROM city
+WHERE country_id IN (
+    SELECT country_id
+    FROM country
+    WHERE population > 20000000
+);
+```
+
+### Correlated Subquery
+```sql
+-- หาเมืองที่มีประชากรมากกว่าค่าเฉลี่ยของประเทศนั้น
+SELECT *
+FROM city main_city
+WHERE population > (
+    SELECT AVG(population)
+    FROM city average_city
+    WHERE average_city.country_id = main_city.country_id
+);
+
+-- หาประเทศที่มีอย่างน้อยหนึ่งเมือง
+SELECT name
+FROM country
+WHERE EXISTS (
+    SELECT *
+    FROM city
+    WHERE city.country_id = country.id
+);
+```
+
+## Set Operations (การดำเนินการเซต)
+
+### UNION
+```sql
+-- รวมรายชื่อนักปั่นจักรยานและนักสเก็ตชาวเยอรมัน (ไม่ซ้ำ)
+SELECT name
+FROM cycling
+WHERE country = 'DE'
+UNION
+SELECT name
+FROM skating
+WHERE country = 'DE';
+
+-- รวมรายชื่อทั้งหมด (รวมที่ซ้ำ)
+SELECT name
+FROM cycling
+WHERE country = 'DE'
+UNION ALL
+SELECT name
+FROM skating
+WHERE country = 'DE';
+```
+
+### INTERSECT
+```sql
+-- หาคนที่เป็นทั้งนักปั่นจักรยานและนักสเก็ตชาวเยอรมัน
+SELECT name
+FROM cycling
+WHERE country = 'DE'
+INTERSECT
+SELECT name
+FROM skating
+WHERE country = 'DE';
+```
+
+### EXCEPT
+```sql
+-- หานักปั่นจักรยานชาวเยอรมันที่ไม่ได้เป็นนักสเก็ต
+SELECT name
+FROM cycling
+WHERE country = 'DE'
+EXCEPT
+SELECT name
+FROM skating
+WHERE country = 'DE';
+``` 
