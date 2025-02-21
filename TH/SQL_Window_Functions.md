@@ -119,3 +119,81 @@ FROM sales;
 - `n FOLLOWING` = ระหว่างแถวปัจจุบันและ n แถวถัดไป
 - `UNBOUNDED PRECEDING` = ตั้งแต่แถวแรกถึงแถวปัจจุบัน
 - `UNBOUNDED FOLLOWING` = ตั้งแต่แถวปัจจุบันถึงแถวสุดท้าย 
+
+## ฟังก์ชัน Window ที่สำคัญ
+
+### Ranking Functions (ฟังก์ชันจัดลำดับ)
+- `ROW_NUMBER()` - ให้เลขลำดับแถวที่ไม่ซ้ำกันในแต่ละ partition
+- `RANK()` - จัดลำดับโดยมีช่องว่างเมื่อค่าเท่ากัน
+- `DENSE_RANK()` - จัดลำดับโดยไม่มีช่องว่างเมื่อค่าเท่ากัน
+
+ตัวอย่าง:
+```sql
+SELECT city, price,
+       ROW_NUMBER() OVER (ORDER BY price) as row_number,
+       RANK() OVER (ORDER BY price) as rank,
+       DENSE_RANK() OVER (ORDER BY price) as dense_rank
+FROM sales;
+```
+
+### Distribution Functions (ฟังก์ชันการกระจาย)
+- `PERCENT_RANK()` - คำนวณตำแหน่งเปอร์เซ็นต์ของแถว (0 ถึง 1)
+- `CUME_DIST()` - คำนวณการกระจายสะสมของค่าในกลุ่ม
+
+ตัวอย่าง:
+```sql
+SELECT city, sold,
+       PERCENT_RANK() OVER (ORDER BY sold) as percent_rank,
+       CUME_DIST() OVER (ORDER BY sold) as cume_dist
+FROM sales;
+```
+
+### Analytic Functions (ฟังก์ชันวิเคราะห์)
+- `LEAD(expr [, offset [, default]])` - ดึงค่าจากแถวถัดไป
+- `LAG(expr [, offset [, default]])` - ดึงค่าจากแถวก่อนหน้า
+- `FIRST_VALUE(expr)` - ค่าแรกในกรอบหน้าต่าง
+- `LAST_VALUE(expr)` - ค่าสุดท้ายในกรอบหน้าต่าง
+- `NTH_VALUE(expr, n)` - ค่าลำดับที่ n ในกรอบหน้าต่าง
+
+ตัวอย่าง:
+```sql
+-- ดูยอดขายเดือนก่อนและเดือนถัดไป
+SELECT month, sold,
+       LAG(sold, 1) OVER (ORDER BY month) as prev_month,
+       LEAD(sold, 1) OVER (ORDER BY month) as next_month
+FROM sales;
+
+-- ดูยอดขายสูงสุดและต่ำสุดในแต่ละกลุ่ม
+SELECT city, month, sold,
+       FIRST_VALUE(sold) OVER (
+           PARTITION BY city 
+           ORDER BY month
+           RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) as first_sale,
+       LAST_VALUE(sold) OVER (
+           PARTITION BY city 
+           ORDER BY month
+           RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
+       ) as last_sale
+FROM sales;
+
+-- ดูยอดขายลำดับที่ 2 ของแต่ละเมือง
+SELECT city, month, sold,
+       NTH_VALUE(sold, 2) OVER (
+           PARTITION BY city 
+           ORDER BY sold DESC
+           RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+       ) as second_highest_sale
+FROM sales;
+```
+
+### NTILE Function
+- `NTILE(n)` - แบ่งข้อมูลออกเป็น n กลุ่มเท่าๆ กัน
+
+ตัวอย่าง:
+```sql
+-- แบ่งเมืองตามยอดขายเป็น 4 กลุ่ม
+SELECT city, sold,
+       NTILE(4) OVER (ORDER BY sold) as quartile
+FROM sales;
+``` 
