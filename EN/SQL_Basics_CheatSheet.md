@@ -163,3 +163,132 @@ JOIN country AS c2 ON c1.country_id = c2.id;
 3. Avoid SELECT * in production
 4. Use BETWEEN instead of multiple conditions
 5. Test queries with diverse data sets 
+
+## Aggregation and Functions
+
+### Aggregate Functions
+- `avg(expr)` - average value for rows within the group
+- `count(expr)` - count of values for rows within the group
+- `max(expr)` - maximum value within the group
+- `min(expr)` - minimum value within the group
+- `sum(expr)` - sum of values within the group
+
+### Example Queries
+```sql
+-- Count total number of cities
+SELECT COUNT(*) FROM city;
+
+-- Count cities with non-null ratings
+SELECT COUNT(rating) FROM city;
+
+-- Count distinct countries
+SELECT COUNT(DISTINCT country_id) FROM city;
+
+-- Find smallest and largest country populations
+SELECT MIN(population), MAX(population)
+FROM country;
+
+-- Sum population by country
+SELECT country_id, SUM(population)
+FROM city
+GROUP BY country_id;
+
+-- Average rating by country where average is above 3.0
+SELECT country_id, AVG(rating)
+FROM city
+GROUP BY country_id
+HAVING AVG(rating) > 3.0;
+```
+
+## Subqueries
+
+### Single Value Subquery
+```sql
+-- Find cities with the same rating as Paris
+SELECT name FROM city
+WHERE rating = (
+    SELECT rating
+    FROM city
+    WHERE name = 'Paris'
+);
+```
+
+### Multiple Values Subquery
+```sql
+-- Find cities in countries with population over 20 million
+SELECT name
+FROM city
+WHERE country_id IN (
+    SELECT country_id
+    FROM country
+    WHERE population > 20000000
+);
+```
+
+### Correlated Subquery
+```sql
+-- Find cities with population greater than their country's average
+SELECT *
+FROM city main_city
+WHERE population > (
+    SELECT AVG(population)
+    FROM city average_city
+    WHERE average_city.country_id = main_city.country_id
+);
+
+-- Find countries that have at least one city
+SELECT name
+FROM country
+WHERE EXISTS (
+    SELECT *
+    FROM city
+    WHERE city.country_id = country.id
+);
+```
+
+## Set Operations
+
+### UNION
+```sql
+-- Combine German cyclists and skaters (no duplicates)
+SELECT name
+FROM cycling
+WHERE country = 'DE'
+UNION
+SELECT name
+FROM skating
+WHERE country = 'DE';
+
+-- Combine all records (including duplicates)
+SELECT name
+FROM cycling
+WHERE country = 'DE'
+UNION ALL
+SELECT name
+FROM skating
+WHERE country = 'DE';
+```
+
+### INTERSECT
+```sql
+-- Find German athletes who both cycle and skate
+SELECT name
+FROM cycling
+WHERE country = 'DE'
+INTERSECT
+SELECT name
+FROM skating
+WHERE country = 'DE';
+```
+
+### EXCEPT
+```sql
+-- Find German cyclists who don't skate
+SELECT name
+FROM cycling
+WHERE country = 'DE'
+EXCEPT
+SELECT name
+FROM skating
+WHERE country = 'DE';
+``` 
